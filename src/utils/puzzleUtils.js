@@ -35,7 +35,7 @@ export function splitImageIntoPieces(imageUri, pieceCount, puzzleSize) {
   return pieces;
 }
 
-export function isPieceInCorrectPosition(piece, threshold = 20) {
+export function isPieceInCorrectPosition(piece, threshold = 30) {
   const dx = Math.abs(piece.currentX - piece.correctX);
   const dy = Math.abs(piece.currentY - piece.correctY);
   return dx < threshold && dy < threshold;

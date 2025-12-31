@@ -23,6 +23,7 @@ export default function Puzzle({ difficulty, onBack }) {
   const [imageUri, setImageUri] = useState(null);
   const [pieces, setPieces] = useState([]);
   const [solvedPieces, setSolvedPieces] = useState(0);
+  const [placedPieces, setPlacedPieces] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [showCelebration, setShowCelebration] = useState(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
@@ -57,25 +58,39 @@ export default function Puzzle({ difficulty, onBack }) {
   };
 
   const handlePiecePlaced = useCallback((pieceId, isCorrect) => {
-    if (isCorrect) {
-      setSolvedPieces((prev) => {
-        const newCount = prev + 1;
-        if (newCount === difficulty.pieces) {
-          // Puzzle completed!
-          Animated.spring(fadeAnim, {
-            toValue: 0,
-            useNativeDriver: true,
-          }).start(() => {
-            setShowCelebration(true);
-          });
+    setPlacedPieces((prev) => {
+      const newSet = new Set(prev);
+      if (isCorrect) {
+        // Only add if not already placed
+        if (!newSet.has(pieceId)) {
+          newSet.add(pieceId);
+          setSolvedPieces(newSet.size);
+          
+          // Check if puzzle is completed
+          if (newSet.size === difficulty.pieces) {
+            // Puzzle completed!
+            Animated.spring(fadeAnim, {
+              toValue: 0,
+              useNativeDriver: true,
+            }).start(() => {
+              setShowCelebration(true);
+            });
+          }
         }
-        return newCount;
-      });
-    }
+      } else {
+        // Remove if piece was moved away
+        if (newSet.has(pieceId)) {
+          newSet.delete(pieceId);
+          setSolvedPieces(newSet.size);
+        }
+      }
+      return newSet;
+    });
   }, [difficulty.pieces, fadeAnim]);
 
   const handleNewPuzzle = () => {
     setSolvedPieces(0);
+    setPlacedPieces(new Set());
     setShowCelebration(false);
     fadeAnim.setValue(1);
     loadImage();

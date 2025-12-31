@@ -9,9 +9,17 @@ export default function PuzzlePiece({ piece, puzzleAreaSize, gridSize, onPlaced 
   const scale = useRef(new RNAnimated.Value(1)).current;
 
   const snapToPosition = (x, y) => {
+    // Ensure coordinates are within bounds (0 to puzzleAreaSize)
+    const boundedX = Math.max(0, Math.min(x, puzzleAreaSize - piece.pieceSize));
+    const boundedY = Math.max(0, Math.min(y, puzzleAreaSize - piece.pieceSize));
+    
+    // Flatten offset first to get the actual current position
+    pan.flattenOffset();
+    
+    // Now animate to the correct position
     RNAnimated.parallel([
       RNAnimated.spring(pan, {
-        toValue: { x, y },
+        toValue: { x: boundedX, y: boundedY },
         useNativeDriver: false,
         damping: 15,
         stiffness: 150,
@@ -35,17 +43,30 @@ export default function PuzzlePiece({ piece, puzzleAreaSize, gridSize, onPlaced 
       currentX: x,
       currentY: y,
     };
-    const isCorrect = isPieceInCorrectPosition(updatedPiece);
+    const isCorrect = isPieceInCorrectPosition(updatedPiece, 30); // Increased threshold for easier snapping
     
     if (isCorrect && !isPlaced) {
+      // Snap to correct position
       setIsPlaced(true);
       onPlaced(piece.id, true);
-      snapToPosition(piece.correctX, piece.correctY);
+      
+      // Ensure correct position is within bounds
+      const boundedX = Math.max(0, Math.min(piece.correctX, puzzleAreaSize - piece.pieceSize));
+      const boundedY = Math.max(0, Math.min(piece.correctY, puzzleAreaSize - piece.pieceSize));
+      
+      // Update piece position first
+      piece.currentX = boundedX;
+      piece.currentY = boundedY;
+      
+      // Then animate to the correct position
+      snapToPosition(boundedX, boundedY);
     } else if (!isCorrect && isPlaced) {
       setIsPlaced(false);
       onPlaced(piece.id, false);
-    } else {
-      // Update position even if not placed correctly
+      piece.currentX = x;
+      piece.currentY = y;
+    } else if (!isPlaced) {
+      // Update piece position
       piece.currentX = x;
       piece.currentY = y;
     }
@@ -75,23 +96,35 @@ export default function PuzzlePiece({ piece, puzzleAreaSize, gridSize, onPlaced 
       },
       onPanResponderRelease: (evt, gestureState) => {
         if (!isPlaced) {
+          // Calculate the final position
           const offsetX = pan.x._offset || 0;
           const offsetY = pan.y._offset || 0;
-          const newX = offsetX + gestureState.dx;
-          const newY = offsetY + gestureState.dy;
+          const finalX = offsetX + gestureState.dx;
+          const finalY = offsetY + gestureState.dy;
           
+          // Flatten offset first
           pan.flattenOffset();
-          pan.setValue({ x: newX, y: newY });
+          
+          // Set the current position value
+          pan.setValue({ x: finalX, y: finalY });
+          
+          // Update piece position
+          piece.currentX = finalX;
+          piece.currentY = finalY;
           
           RNAnimated.spring(scale, {
             toValue: 1,
             useNativeDriver: false,
           }).start();
           
-          // Update piece position and check placement
-          piece.currentX = newX;
-          piece.currentY = newY;
-          checkPlacement(newX, newY);
+          // Check placement and snap if close
+          checkPlacement(finalX, finalY);
+        } else {
+          // If already placed, just reset scale
+          RNAnimated.spring(scale, {
+            toValue: 1,
+            useNativeDriver: false,
+          }).start();
         }
       },
     })
