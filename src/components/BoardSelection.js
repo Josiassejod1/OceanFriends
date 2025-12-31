@@ -16,6 +16,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { DIFFICULTY_LEVELS } from '../utils/constants';
 import Settings from './Settings';
 import { loadSounds, playClickSound, unloadSounds } from '../utils/audioUtils';
+import {
+  getBoardProgress,
+  isPuzzleCompleted,
+  getStatistics,
+} from '../utils/progressUtils';
 
 // Optional IAP imports - gracefully handle if package not installed
 let iapUtils = null;
@@ -81,10 +86,14 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
   const [difficultyLocked, setDifficultyLocked] = useState(false);
   const [iapReady, setIapReady] = useState(false);
   const [purchasePrice, setPurchasePrice] = useState('$2.99'); // Default fallback
+  const [boardProgress, setBoardProgress] = useState({}); // { boardId: { completed: 0, total: 3, percentage: 0 } }
+  const [statistics, setStatistics] = useState(null);
 
   useEffect(() => {
     loadUnlockedBoards();
     loadDifficultyLock();
+    loadProgress();
+    loadStatistics();
     initializeIAPAndLoadPrice();
     // Load sounds for board selection clicks
     loadSounds().catch(() => {
@@ -96,6 +105,19 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
       iapUtils.disconnectIAP();
     };
   }, []);
+
+  const loadProgress = async () => {
+    const progress = {};
+    for (const board of ALL_BOARDS) {
+      progress[board.id] = await getBoardProgress(board.id);
+    }
+    setBoardProgress(progress);
+  };
+
+  const loadStatistics = async () => {
+    const stats = await getStatistics();
+    setStatistics(stats);
+  };
 
   const initializeIAPAndLoadPrice = async () => {
     try {
@@ -123,6 +145,8 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
     if (!showSettings) {
       // Reload settings when settings modal closes
       loadDifficultyLock();
+      // Reload progress when returning from settings
+      loadProgress();
     }
   }, [showSettings]);
 
@@ -346,6 +370,8 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
           const unlocked = isUnlocked(board.id);
           const imageSource = RNImage.resolveAssetSource(board.image);
           const isEven = index % 2 === 0;
+          const progress = boardProgress[board.id] || { completed: 0, total: 3, percentage: 0 };
+          const isCompleted = progress.completed === progress.total;
           
           return (
             <TouchableOpacity
@@ -366,10 +392,30 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
                     <Text style={styles.lockText}>Locked</Text>
                   </View>
                 )}
+                {unlocked && progress.completed > 0 && (
+                  <View style={styles.progressOverlay}>
+                    <View style={styles.progressBar}>
+                      <View 
+                        style={[
+                          styles.progressFill, 
+                          { width: `${progress.percentage}%` }
+                        ]} 
+                      />
+                    </View>
+                    {isCompleted && (
+                      <Text style={styles.completedBadge}>✓</Text>
+                    )}
+                  </View>
+                )}
               </View>
               <Text style={styles.boardName} numberOfLines={1}>
                 {board.name}
               </Text>
+              {unlocked && progress.completed > 0 && (
+                <Text style={styles.progressText}>
+                  {progress.completed}/{progress.total} completed
+                </Text>
+              )}
             </TouchableOpacity>
           );
         })}
@@ -547,6 +593,45 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
+  },
+  progressOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+  },
+  progressBar: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#4CAF50',
+  },
+  completedBadge: {
+    position: 'absolute',
+    top: -25,
+    right: 5,
+    fontSize: 20,
+    color: '#4CAF50',
+    fontWeight: 'bold',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    textAlign: 'center',
+    lineHeight: 30,
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+  },
+  progressText: {
+    fontSize: 12,
+    color: '#757575',
+    marginTop: 4,
+    textAlign: 'center',
   },
 });
 

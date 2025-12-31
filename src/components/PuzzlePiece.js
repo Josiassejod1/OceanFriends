@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { View, StyleSheet, Animated as RNAnimated, PanResponder } from 'react-native';
 import { Image } from 'expo-image';
+import * as Haptics from 'expo-haptics';
 import { isPieceInCorrectPosition } from '../utils/puzzleUtils';
 
 export default function PuzzlePiece({ piece, puzzleAreaSize, gridSize, onPlaced }) {
@@ -53,6 +54,11 @@ export default function PuzzlePiece({ piece, puzzleAreaSize, gridSize, onPlaced 
     const isCorrect = isPieceInCorrectPosition(updatedPiece, 30); // Increased threshold for easier snapping
     
     if (isCorrect && !isPlaced) {
+      // Medium haptic on correct placement
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {
+        // Silently fail if haptics not available
+      });
+      
       // Snap to correct position
       setIsPlaced(true);
       onPlaced(piece.id, true);
@@ -85,6 +91,11 @@ export default function PuzzlePiece({ piece, puzzleAreaSize, gridSize, onPlaced 
       onMoveShouldSetPanResponder: () => !isPlaced,
       onPanResponderGrant: () => {
         if (!isPlaced) {
+          // Light haptic on piece pick up
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {
+            // Silently fail if haptics not available
+          });
+          
           pan.setOffset({
             x: pan.x._value,
             y: pan.y._value,

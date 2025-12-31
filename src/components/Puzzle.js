@@ -12,16 +12,24 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Animated } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import PuzzlePiece from './PuzzlePiece';
 import Confetti from './Confetti';
 import { splitImageIntoPieces } from '../utils/puzzleUtils';
 import { loadSounds, playCorrectSound, playSuccessSound, unloadSounds } from '../utils/audioUtils';
+import {
+  savePuzzleState,
+  loadPuzzleState,
+  clearPuzzleState,
+  markPuzzleCompleted,
+  saveLastPlayed,
+} from '../utils/progressUtils';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PUZZLE_AREA_SIZE = Math.min(SCREEN_WIDTH - 40, SCREEN_HEIGHT * 0.6);
 const PIECE_SIZE = PUZZLE_AREA_SIZE / 4; // Base size for calculations
 
-export default function Puzzle({ difficulty, boardImage, onBack }) {
+export default function Puzzle({ difficulty, boardImage, boardId, onBack }) {
   const [imageUri, setImageUri] = useState(null);
   const [pieces, setPieces] = useState([]);
   const [solvedPieces, setSolvedPieces] = useState(0);
@@ -30,9 +38,10 @@ export default function Puzzle({ difficulty, boardImage, onBack }) {
   const [showCelebration, setShowCelebration] = useState(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const soundsReady = useRef(false);
+  const saveStateTimeoutRef = useRef(null);
 
   useEffect(() => {
-    loadImage();
+    loadImageAndState();
     // Load audio files on mount
     loadSounds().then(() => {
       soundsReady.current = true;
@@ -42,10 +51,18 @@ export default function Puzzle({ difficulty, boardImage, onBack }) {
     
     return () => {
       unloadSounds(); // Cleanup on unmount
+      // Save state when component unmounts
+      if (pieces.length > 0 && placedPieces.size > 0) {
+        savePuzzleState(boardId, difficulty.id, pieces, placedPieces);
+      }
+      // Clear timeout if component unmounts
+      if (saveStateTimeoutRef.current) {
+        clearTimeout(saveStateTimeoutRef.current);
+      }
     };
-  }, [boardImage]);
+  }, [boardImage, boardId]);
 
-  const loadImage = async () => {
+  const loadImageAndState = async () => {
     try {
       setLoading(true);
       
@@ -62,12 +79,48 @@ export default function Puzzle({ difficulty, boardImage, onBack }) {
       }
       
       setImageUri(imageUri);
-      const puzzlePieces = splitImageIntoPieces(
-        imageUri,
-        difficulty.pieces,
-        PUZZLE_AREA_SIZE
-      );
+      
+      // Try to load saved state
+      const savedState = await loadPuzzleState();
+      let puzzlePieces;
+      
+      if (savedState && savedState.boardId === boardId && savedState.difficultyId === difficulty.id) {
+        // Restore from saved state
+        puzzlePieces = splitImageIntoPieces(
+          imageUri,
+          difficulty.pieces,
+          PUZZLE_AREA_SIZE
+        );
+        
+        // Restore piece positions
+        savedState.pieces.forEach(savedPiece => {
+          const piece = puzzlePieces.find(p => p.id === savedPiece.id);
+          if (piece) {
+            piece.currentX = savedPiece.currentX;
+            piece.currentY = savedPiece.currentY;
+            piece.isPlaced = savedPiece.isPlaced;
+          }
+        });
+        
+        // Restore placed pieces set
+        setPlacedPieces(new Set(savedState.placedPieceIds));
+        setSolvedPieces(savedState.placedPieceIds.length);
+      } else {
+        // New puzzle - clear any old state
+        await clearPuzzleState();
+        puzzlePieces = splitImageIntoPieces(
+          imageUri,
+          difficulty.pieces,
+          PUZZLE_AREA_SIZE
+        );
+        setPlacedPieces(new Set());
+        setSolvedPieces(0);
+      }
+      
       setPieces(puzzlePieces);
+      
+      // Save last played
+      await saveLastPlayed(boardId, difficulty.id);
     } catch (error) {
       console.error('Error loading image:', error);
       Alert.alert('Error', 'Failed to load image. Please try again.');
@@ -90,12 +143,31 @@ export default function Puzzle({ difficulty, boardImage, onBack }) {
             playCorrectSound().catch(err => console.error('Sound play error:', err));
           }
           
+          // Save state after piece placement (debounced)
+          if (saveStateTimeoutRef.current) {
+            clearTimeout(saveStateTimeoutRef.current);
+          }
+          saveStateTimeoutRef.current = setTimeout(() => {
+            savePuzzleState(boardId, difficulty.id, pieces, newSet);
+          }, 500); // Save 500ms after last placement
+          
           // Check if puzzle is completed
           if (newSet.size === difficulty.pieces) {
             // Puzzle completed! Play success sound
             if (soundsReady.current) {
               playSuccessSound().catch(err => console.error('Sound play error:', err));
             }
+            
+            // Success haptic on completion
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {
+              // Silently fail if haptics not available
+            });
+            
+            // Mark puzzle as completed
+            markPuzzleCompleted(boardId, difficulty.id);
+            
+            // Clear saved state (puzzle is done)
+            clearPuzzleState();
             
             // Puzzle completed!
             Animated.spring(fadeAnim, {
@@ -111,18 +183,27 @@ export default function Puzzle({ difficulty, boardImage, onBack }) {
         if (newSet.has(pieceId)) {
           newSet.delete(pieceId);
           setSolvedPieces(newSet.size);
+          
+          // Save state when piece is removed
+          if (saveStateTimeoutRef.current) {
+            clearTimeout(saveStateTimeoutRef.current);
+          }
+          saveStateTimeoutRef.current = setTimeout(() => {
+            savePuzzleState(boardId, difficulty.id, pieces, newSet);
+          }, 500);
         }
       }
       return newSet;
     });
-  }, [difficulty.pieces, fadeAnim]);
+  }, [difficulty.pieces, difficulty.id, boardId, pieces, fadeAnim]);
 
-  const handleNewPuzzle = () => {
+  const handleNewPuzzle = async () => {
     setSolvedPieces(0);
     setPlacedPieces(new Set());
     setShowCelebration(false);
     fadeAnim.setValue(1);
-    loadImage();
+    await clearPuzzleState(); // Clear saved state for new puzzle
+    loadImageAndState();
   };
 
   if (loading) {

@@ -25,3 +25,4 @@ To fix the Worklets version mismatch error, follow these steps:
 
 The issue is that Expo Go has a built-in version of react-native-reanimated that may not match. Using v3.16.1 should be more compatible.
 
+

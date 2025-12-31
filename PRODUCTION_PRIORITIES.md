@@ -112,3 +112,4 @@ npm install @sentry/react-native
 - [ ] Test on older devices
 - [ ] Test with slow network (if adding online features)
 
+

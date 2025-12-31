@@ -9,12 +9,14 @@
     "web": "expo start --web",
     "version:patch": "node scripts/increment-version.js patch",
     "version:minor": "node scripts/increment-version.js minor",
-    "version:major": "node scripts/increment-version.js major"
+    "version:major": "node scripts/increment-version.js major",
+    "theme:create": "node scripts/create-theme.js"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "~2.1.0",
     "expo": "~54.0.30",
     "expo-av": "~15.0.1",
+    "expo-haptics": "^15.0.8",
     "expo-iap": "^3.4.0",
     "expo-image": "~3.0.11",
     "expo-in-app-purchases": "^14.5.0",

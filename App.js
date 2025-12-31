@@ -12,6 +12,7 @@ export default function App() {
       <Puzzle
         difficulty={selectedDifficulty}
         boardImage={selectedBoard.image}
+        boardId={selectedBoard.id}
         onBack={() => {
           setSelectedBoard(null);
         }}

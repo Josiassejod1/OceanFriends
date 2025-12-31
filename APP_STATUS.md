@@ -205,3 +205,4 @@ The app is shaping up really well! You have a solid foundation with core gamepla
 
 You're about **65% complete** and the hardest parts (game mechanics, design, content) are done! The remaining work is mostly compliance and polish.
 
+

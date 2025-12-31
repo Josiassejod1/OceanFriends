@@ -78,3 +78,4 @@ If you need to set a specific version manually, edit:
 - Build numbers must always increment (can't go backwards)
 - The app displays version from `Constants.expoConfig.version` automatically
 
+
