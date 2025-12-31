@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Ocean Friends Puzzle",
+    "name": "Ocean Friends",
     "slug": "ocean-friends-jigsaw",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -16,6 +16,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.oceanfriends.jigsaw",
       "buildNumber": "1.0.0",
+      "subtitle": "Sea Life Jigsaw Puzzles",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -28,12 +29,13 @@
       "edgeToEdgeEnabled": true,
       "package": "com.oceanfriends.jigsaw",
       "versionCode": 1,
-      "permissions": []
+      "permissions": [],
+      "name": "Ocean Friends: Sea Life Jigsaw Puzzles"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "privacy": "public",
-    "description": "A fun and educational jigsaw puzzle game for kids featuring ocean friends!"
+    "description": "Ocean Friends - Sea Life Jigsaw Puzzles! Solve beautiful ocean animal puzzles featuring dolphins, turtles, fish, and more. Perfect jigsaw puzzle game for kids and families. Play with 4, 9, or 16 pieces. Free ocean puzzles with marine life themes!"
   }
 }
