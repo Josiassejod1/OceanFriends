@@ -4,13 +4,13 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  SafeAreaView,
   Switch,
   Modal,
   TextInput,
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -166,7 +166,7 @@ export default function Settings({ visible, onClose }) {
         <StatusBar style="dark" />
         <LinearGradient
           colors={['#E3F2FD', '#BBDEFB', '#90CAF9', '#BBDEFB']}
-          locations={[0, 0.15, 0.3, 0.5, 0.65, 0.8, 1]}
+          locations={[0, 0.33, 0.66, 1]}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
           style={StyleSheet.absoluteFill}
