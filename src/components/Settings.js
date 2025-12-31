@@ -13,6 +13,23 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
+import { showReviewPrompt } from '../utils/reviewUtils';
+
+// Get version from app.json (fallback if expo-constants not available)
+let appVersion = '1.0.0';
+try {
+  const Constants = require('expo-constants').default;
+  appVersion = Constants.expoConfig?.version || '1.0.0';
+} catch (e) {
+  // Fallback: try to read from app.json directly
+  try {
+    const appJson = require('../../app.json');
+    appVersion = appJson.expo?.version || '1.0.0';
+  } catch (e2) {
+    // Final fallback
+    appVersion = '1.0.0';
+  }
+}
 
 // Simple storage fallback
 let storage = null;
@@ -162,7 +179,7 @@ export default function Settings({ visible, onClose }) {
       animationType="slide"
       onRequestClose={onClose}
     >
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <StatusBar style="dark" />
         <LinearGradient
           colors={['#E3F2FD', '#BBDEFB', '#90CAF9', '#BBDEFB']}
@@ -228,7 +245,15 @@ export default function Settings({ visible, onClose }) {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>About</Text>
             <Text style={styles.aboutText}>Ocean Friends Jigsaw</Text>
-            <Text style={styles.aboutText}>Version 1.0.0</Text>
+            <Text style={styles.aboutText}>
+              Version {appVersion}
+            </Text>
+            <TouchableOpacity
+              style={styles.reviewButton}
+              onPress={showReviewPrompt}
+            >
+              <Text style={styles.reviewButtonText}>⭐ Rate This App</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -366,6 +391,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#757575',
     marginBottom: 5,
+  },
+  reviewButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 15,
+    borderWidth: 1,
+    borderColor: '#FFD700',
+  },
+  reviewButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FF9800',
   },
   modalOverlay: {
     flex: 1,
