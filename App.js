@@ -1,27 +1,7 @@
 import React, { useState } from 'react';
 import Puzzle from './src/components/Puzzle';
 import BoardSelection from './src/components/BoardSelection';
-
-export const DIFFICULTY_LEVELS = [
-  { 
-    id: 'easy', 
-    label: 'Easy', 
-    pieces: 4, 
-    color: '#4CAF50',
-  },
-  { 
-    id: 'medium', 
-    label: 'Medium', 
-    pieces: 9, 
-    color: '#FF9800',
-  },
-  { 
-    id: 'hard', 
-    label: 'Hard', 
-    pieces: 16, 
-    color: '#F44336',
-  },
-];
+import { DIFFICULTY_LEVELS } from './src/utils/constants';
 
 export default function App() {
   const [selectedDifficulty, setSelectedDifficulty] = useState(DIFFICULTY_LEVELS[0]); // Default to Easy

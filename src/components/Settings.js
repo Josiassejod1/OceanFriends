@@ -162,7 +162,7 @@ export default function Settings({ visible, onClose }) {
       animationType="slide"
       onRequestClose={onClose}
     >
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <StatusBar style="dark" />
         <LinearGradient
           colors={['#E3F2FD', '#BBDEFB', '#90CAF9', '#BBDEFB']}

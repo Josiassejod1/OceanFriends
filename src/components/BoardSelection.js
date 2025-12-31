@@ -13,8 +13,25 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { DIFFICULTY_LEVELS } from '../../App';
+import { DIFFICULTY_LEVELS } from '../utils/constants';
 import Settings from './Settings';
+import { loadSounds, playClickSound, unloadSounds } from '../utils/audioUtils';
+
+// Optional IAP imports - gracefully handle if package not installed
+let iapUtils = null;
+try {
+  iapUtils = require('../utils/iapUtils');
+} catch (e) {
+  // IAP not available - app will work without it
+  iapUtils = {
+    initializeIAP: async () => false,
+    disconnectIAP: async () => {},
+    purchaseUnlockAll: async () => ({ success: false, error: 'IAP not available' }),
+    restorePurchases: async () => ({ success: true, restored: 0 }),
+    hasUnlockedAll: async () => false,
+    getPurchaseInfo: async () => null,
+  };
+}
 
 // Simple storage fallback if AsyncStorage is not available
 let storage = null;
@@ -50,6 +67,7 @@ const ALL_BOARDS = [
   { id: 'sealion', name: 'Sea Lion', image: require('../../assets/boards/sealion.png') },
   { id: 'sleep', name: 'Sleep', image: require('../../assets/boards/sleep.png') },
   { id: 'seahorse', name: 'Seahorse', image: require('../../assets/boards/seahorse.png') },
+  { id: 'lobster', name: 'Lobster', image: require('../../assets/boards/lobster.png') },
 ];
 
 const FREE_BOARDS_COUNT = 5;
@@ -61,11 +79,45 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [difficultyLocked, setDifficultyLocked] = useState(false);
+  const [iapReady, setIapReady] = useState(false);
+  const [purchasePrice, setPurchasePrice] = useState('$2.99'); // Default fallback
 
   useEffect(() => {
     loadUnlockedBoards();
     loadDifficultyLock();
+    initializeIAPAndLoadPrice();
+    // Load sounds for board selection clicks
+    loadSounds().catch(() => {
+      // Silently fail - audio is optional
+    });
+    
+    return () => {
+      unloadSounds();
+      iapUtils.disconnectIAP();
+    };
   }, []);
+
+  const initializeIAPAndLoadPrice = async () => {
+    try {
+      const ready = await iapUtils.initializeIAP();
+      setIapReady(ready);
+      
+      if (ready) {
+        // Try to restore previous purchases
+        await iapUtils.restorePurchases();
+        await loadUnlockedBoards(); // Reload after restoration
+        
+        // Get actual price from store
+        const purchaseInfo = await iapUtils.getPurchaseInfo();
+        if (purchaseInfo && purchaseInfo.price) {
+          setPurchasePrice(purchaseInfo.price);
+        }
+      }
+    } catch (error) {
+      console.error('Error initializing IAP:', error);
+      // Continue without IAP - app will still work
+    }
+  };
 
   useEffect(() => {
     if (!showSettings) {
@@ -87,15 +139,26 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
 
   const loadUnlockedBoards = async () => {
     try {
-      const stored = await storage.getItem(UNLOCK_KEY);
-      if (stored) {
-        const unlocked = JSON.parse(stored);
-        setUnlockedBoards(new Set(unlocked));
+      // Check if "unlock all" was purchased
+      const hasUnlocked = await iapUtils.hasUnlockedAll();
+      
+      if (hasUnlocked) {
+        // If unlock all was purchased, unlock everything
+        const allIds = ALL_BOARDS.map(b => b.id);
+        setUnlockedBoards(new Set(allIds));
+        await storage.setItem(UNLOCK_KEY, JSON.stringify(allIds));
       } else {
-        // First 5 are free by default
-        const defaultUnlocked = ALL_BOARDS.slice(0, FREE_BOARDS_COUNT).map(b => b.id);
-        setUnlockedBoards(new Set(defaultUnlocked));
-        await storage.setItem(UNLOCK_KEY, JSON.stringify(defaultUnlocked));
+        // Otherwise, load from storage or use defaults
+        const stored = await storage.getItem(UNLOCK_KEY);
+        if (stored) {
+          const unlocked = JSON.parse(stored);
+          setUnlockedBoards(new Set(unlocked));
+        } else {
+          // First 5 are free by default
+          const defaultUnlocked = ALL_BOARDS.slice(0, FREE_BOARDS_COUNT).map(b => b.id);
+          setUnlockedBoards(new Set(defaultUnlocked));
+          await storage.setItem(UNLOCK_KEY, JSON.stringify(defaultUnlocked));
+        }
       }
     } catch (error) {
       console.error('Error loading unlocked boards:', error);
@@ -115,6 +178,11 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
   };
 
   const handleBoardPress = (board) => {
+    // Play subtle click sound when selecting a board
+    playClickSound().catch(() => {
+      // Silently fail if sound can't play
+    });
+    
     if (isUnlocked(board.id)) {
       onSelectBoard(board);
     } else {
@@ -125,24 +193,28 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
   const handlePurchase = (board) => {
     Alert.alert(
       'Unlock Board',
-      `Unlock "${board.name}" for $2.99?`,
+      `Unlock "${board.name}" for ${purchasePrice}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Purchase',
           onPress: async () => {
-            // TODO: Integrate with actual IAP (expo-in-app-purchases)
-            // For now, just unlock it
-            const newUnlocked = new Set(unlockedBoards);
-            newUnlocked.add(board.id);
-            setUnlockedBoards(newUnlocked);
-            
-            try {
-              await storage.setItem(UNLOCK_KEY, JSON.stringify(Array.from(newUnlocked)));
-              Alert.alert('Success', `${board.name} unlocked!`);
-            } catch (error) {
-              console.error('Error saving unlock:', error);
-              Alert.alert('Error', 'Failed to unlock board. Please try again.');
+            // For individual boards, we'll unlock all (simpler IAP model)
+            // In a production app, you might want individual board purchases
+            if (iapReady) {
+              const result = await iapUtils.purchaseUnlockAll();
+              if (result.success) {
+                await loadUnlockedBoards();
+                Alert.alert('Success', `${board.name} unlocked!`);
+              } else {
+                Alert.alert('Purchase Failed', result.error || 'Please try again.');
+              }
+            } else {
+              // Fallback if IAP not available (for testing)
+              Alert.alert(
+                'IAP Not Available',
+                'In-app purchases are not available. Please use "Unlock All" option or try again later.'
+              );
             }
           },
         },
@@ -150,25 +222,44 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
     );
   };
 
-  const handleUnlockAll = () => {
+  const handleUnlockAll = async () => {
+    // Check if already purchased
+    const alreadyUnlocked = await iapUtils.hasUnlockedAll();
+    if (alreadyUnlocked) {
+      await loadUnlockedBoards();
+      Alert.alert('Already Unlocked', 'All boards are already unlocked!');
+      return;
+    }
+
     Alert.alert(
       'Unlock All Boards',
-      'Unlock all remaining boards for $2.99?',
+      `Unlock all remaining boards for ${purchasePrice}?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Purchase',
           onPress: async () => {
-            // TODO: Integrate with actual IAP
-            const allIds = ALL_BOARDS.map(b => b.id);
-            setUnlockedBoards(new Set(allIds));
-            
+            if (!iapReady) {
+              Alert.alert(
+                'IAP Not Available',
+                'In-app purchases are not available on this device. Please try again later.'
+              );
+              return;
+            }
+
             try {
-              await storage.setItem(UNLOCK_KEY, JSON.stringify(allIds));
-              Alert.alert('Success', 'All boards unlocked!');
+              const result = await iapUtils.purchaseUnlockAll();
+              
+              if (result.success) {
+                // Reload unlocked boards
+                await loadUnlockedBoards();
+                Alert.alert('Success', 'All boards unlocked!');
+              } else {
+                Alert.alert('Purchase Failed', result.error || 'Please try again.');
+              }
             } catch (error) {
-              console.error('Error saving unlock:', error);
-              Alert.alert('Error', 'Failed to unlock boards. Please try again.');
+              console.error('Purchase error:', error);
+              Alert.alert('Error', 'Failed to complete purchase. Please try again.');
             }
           },
         },
@@ -189,7 +280,7 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
   const lockedCount = ALL_BOARDS.length - FREE_BOARDS_COUNT - (unlockedBoards.size - FREE_BOARDS_COUNT);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <StatusBar style="dark" />
       {/* Base ocean gradient with wave effect */}
       <LinearGradient
@@ -205,7 +296,7 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
           style={styles.settingsButton}
           onPress={() => setShowSettings(true)}
         >
-          <Text style={styles.settingsButtonText}>⚙️</Text>
+          <Text style={styles.settingsButtonText}>🛟</Text>
         </TouchableOpacity>
       </View>
       <View style={styles.difficultyContainer}>
@@ -288,7 +379,7 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
         <View style={styles.footer}>
           <TouchableOpacity style={styles.unlockAllButton} onPress={handleUnlockAll}>
             <Text style={styles.unlockAllText}>
-              Unlock All ({lockedCount} remaining) - $2.99
+              Unlock All ({lockedCount} remaining) - {purchasePrice}
             </Text>
           </TouchableOpacity>
         </View>

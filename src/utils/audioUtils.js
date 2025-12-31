@@ -2,6 +2,7 @@ import { Audio } from 'expo-av';
 
 let correctSound = null;
 let successSound = null;
+let clickSound = null;
 let soundsLoaded = false;
 
 export async function loadSounds() {
@@ -26,6 +27,13 @@ export async function loadSounds() {
       { shouldPlay: false, volume: 1.0 }
     );
     successSound = success;
+
+    // Load click/pickup sound (lower volume for board selection)
+    const { sound: click } = await Audio.Sound.createAsync(
+      require('../../assets/audio/bubble.wav'),
+      { shouldPlay: false, volume: 0.4 }
+    );
+    clickSound = click;
 
     soundsLoaded = true;
   } catch (error) {
@@ -77,6 +85,25 @@ export async function playSuccessSound() {
   }
 }
 
+export async function playClickSound() {
+  if (!soundsLoaded || !clickSound) {
+    return;
+  }
+  
+  try {
+    const status = await clickSound.getStatusAsync();
+    
+    if (status.isLoaded && status.isPlaying) {
+      await clickSound.stopAsync();
+    }
+    
+    await clickSound.setPositionAsync(0);
+    await clickSound.playAsync();
+  } catch (error) {
+    // Silently fail - audio is optional
+  }
+}
+
 export async function unloadSounds() {
   try {
     if (correctSound) {
@@ -86,6 +113,10 @@ export async function unloadSounds() {
     if (successSound) {
       await successSound.unloadAsync();
       successSound = null;
+    }
+    if (clickSound) {
+      await clickSound.unloadAsync();
+      clickSound = null;
     }
     soundsLoaded = false;
   } catch (error) {

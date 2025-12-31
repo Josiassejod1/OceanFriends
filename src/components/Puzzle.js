@@ -127,7 +127,7 @@ export default function Puzzle({ difficulty, boardImage, onBack }) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.background}>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#9B9B9B" />
@@ -140,8 +140,8 @@ export default function Puzzle({ difficulty, boardImage, onBack }) {
 
   if (showCelebration) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={[styles.background, styles.celebrationBackground]}>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.background}>
           <Confetti />
           <View style={styles.celebrationContainer}>
             <Text style={styles.celebrationEmoji}>🎉🌟🎉</Text>
@@ -185,6 +185,12 @@ export default function Puzzle({ difficulty, boardImage, onBack }) {
         <Animated.View style={[styles.puzzleContainer, { opacity: fadeAnim }]}>
           <View style={styles.puzzleWrapper}>
             <View style={styles.puzzleArea} collapsable={false}>
+              {/* Wooden board background for puzzle area only */}
+              <Image
+                source={require('../../assets/boards/board.png')}
+                style={styles.boardBackground}
+                contentFit="cover"
+              />
               {pieces.map((piece) => (
                 <PuzzlePiece
                   key={piece.id}
@@ -220,9 +226,6 @@ const styles = StyleSheet.create({
   background: {
     flex: 1,
     backgroundColor: '#F5F3F0', // Soft beige/cream
-  },
-  celebrationBackground: {
-    backgroundColor: '#F0EDE8', // Slightly warmer for celebration
   },
   loadingContainer: {
     flex: 1,
@@ -269,16 +272,25 @@ const styles = StyleSheet.create({
     position: 'relative',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'visible',
+    padding: 30, // Allow space for piece overflow
   },
   puzzleArea: {
     width: PUZZLE_AREA_SIZE,
     height: PUZZLE_AREA_SIZE,
-    backgroundColor: '#FFFFFF',
     borderRadius: 10,
     position: 'relative',
     overflow: 'visible',
     borderWidth: 1,
     borderColor: '#E5E5E5',
+  },
+  boardBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: '100%',
+    borderRadius: 10,
   },
   referenceContainer: {
     padding: 15,

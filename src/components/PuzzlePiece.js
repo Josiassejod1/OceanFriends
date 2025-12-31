@@ -7,6 +7,13 @@ export default function PuzzlePiece({ piece, puzzleAreaSize, gridSize, onPlaced 
   const [isPlaced, setIsPlaced] = useState(piece.isPlaced);
   const pan = useRef(new RNAnimated.ValueXY({ x: piece.currentX, y: piece.currentY })).current;
   const scale = useRef(new RNAnimated.Value(1)).current;
+  
+  // Calculate boundaries with limited overflow (30% of piece size)
+  const OVERFLOW_AMOUNT = piece.pieceSize * 0.3;
+  const MIN_X = -OVERFLOW_AMOUNT;
+  const MAX_X = puzzleAreaSize - piece.pieceSize + OVERFLOW_AMOUNT;
+  const MIN_Y = -OVERFLOW_AMOUNT;
+  const MAX_Y = puzzleAreaSize - piece.pieceSize + OVERFLOW_AMOUNT;
 
   const snapToPosition = (x, y) => {
     // Ensure coordinates are within bounds (0 to puzzleAreaSize)
@@ -91,7 +98,23 @@ export default function PuzzlePiece({ piece, puzzleAreaSize, gridSize, onPlaced 
       },
       onPanResponderMove: (evt, gestureState) => {
         if (!isPlaced) {
-          pan.setValue({ x: gestureState.dx, y: gestureState.dy });
+          // Get current offset position
+          const offsetX = pan.x._offset || 0;
+          const offsetY = pan.y._offset || 0;
+          
+          // Calculate new position with gesture
+          const newX = offsetX + gestureState.dx;
+          const newY = offsetY + gestureState.dy;
+          
+          // Constrain to boundaries
+          const constrainedX = Math.max(MIN_X, Math.min(MAX_X, newX));
+          const constrainedY = Math.max(MIN_Y, Math.min(MAX_Y, newY));
+          
+          // Set the constrained value
+          pan.setValue({ 
+            x: constrainedX - offsetX, 
+            y: constrainedY - offsetY 
+          });
         }
       },
       onPanResponderRelease: (evt, gestureState) => {
@@ -99,13 +122,17 @@ export default function PuzzlePiece({ piece, puzzleAreaSize, gridSize, onPlaced 
           // Calculate the final position
           const offsetX = pan.x._offset || 0;
           const offsetY = pan.y._offset || 0;
-          const finalX = offsetX + gestureState.dx;
-          const finalY = offsetY + gestureState.dy;
+          let finalX = offsetX + gestureState.dx;
+          let finalY = offsetY + gestureState.dy;
+          
+          // Constrain to boundaries
+          finalX = Math.max(MIN_X, Math.min(MAX_X, finalX));
+          finalY = Math.max(MIN_Y, Math.min(MAX_Y, finalY));
           
           // Flatten offset first
           pan.flattenOffset();
           
-          // Set the current position value
+          // Set the constrained position value
           pan.setValue({ x: finalX, y: finalY });
           
           // Update piece position
