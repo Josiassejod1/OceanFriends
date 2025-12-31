@@ -21,7 +21,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PUZZLE_AREA_SIZE = Math.min(SCREEN_WIDTH - 40, SCREEN_HEIGHT * 0.6);
 const PIECE_SIZE = PUZZLE_AREA_SIZE / 4; // Base size for calculations
 
-export default function Puzzle({ difficulty, onBack }) {
+export default function Puzzle({ difficulty, boardImage, onBack }) {
   const [imageUri, setImageUri] = useState(null);
   const [pieces, setPieces] = useState([]);
   const [solvedPieces, setSolvedPieces] = useState(0);
@@ -43,26 +43,18 @@ export default function Puzzle({ difficulty, onBack }) {
     return () => {
       unloadSounds(); // Cleanup on unmount
     };
-  }, []);
+  }, [boardImage]);
 
   const loadImage = async () => {
     try {
       setLoading(true);
-      // Use local ocean-themed board images
-      const oceanImages = [
-        require('../../assets/boards/clown.png'),
-        require('../../assets/boards/crab.png'),
-        require('../../assets/boards/dolphin.png'),
-        require('../../assets/boards/scuba.png'),
-        require('../../assets/boards/turtle.png'),
-        require('../../assets/boards/treasure.png'),
-      ];
       
-      // Randomly select from available images
-      const randomImage = oceanImages[Math.floor(Math.random() * oceanImages.length)];
+      if (!boardImage) {
+        throw new Error('No board image provided');
+      }
       
       // Get the URI from the require for local images using React Native's Image
-      const imageSource = RNImage.resolveAssetSource(randomImage);
+      const imageSource = RNImage.resolveAssetSource(boardImage);
       const imageUri = imageSource?.uri;
       
       if (!imageUri) {
@@ -187,9 +179,7 @@ export default function Puzzle({ difficulty, onBack }) {
           <Text style={styles.progressText}>
             {solvedPieces} / {difficulty.pieces}
           </Text>
-          <TouchableOpacity onPress={loadImage} style={styles.newButton}>
-            <Text style={styles.newButtonText}>🔄</Text>
-          </TouchableOpacity>
+          <View style={styles.placeholder} />
         </View>
 
         <Animated.View style={[styles.puzzleContainer, { opacity: fadeAnim }]}>
@@ -264,11 +254,8 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
   },
-  newButton: {
-    padding: 10,
-  },
-  newButtonText: {
-    fontSize: 24,
+  placeholder: {
+    width: 50,
   },
   puzzleContainer: {
     flex: 1,
