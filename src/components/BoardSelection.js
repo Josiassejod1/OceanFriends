@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
 import { DIFFICULTY_LEVELS } from '../../App';
 
 // Simple storage fallback if AsyncStorage is not available
@@ -27,7 +28,7 @@ try {
   };
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const GRID_PADDING = 20;
 const GRID_GAP = 12;
 // Calculate item size: (screen width - 2*padding - gap) / 2 items (2 columns)
@@ -43,6 +44,10 @@ const ALL_BOARDS = [
   { id: 'treasure', name: 'Treasure', image: require('../../assets/boards/treasure.png') },
   { id: 'parasailing', name: 'Parasailing', image: require('../../assets/boards/parasailing.png') },
   { id: 'stingray', name: 'Stingray', image: require('../../assets/boards/stingray.png') },
+  { id: 'shark', name: 'Shark', image: require('../../assets/boards/shark.png') },
+  { id: 'octopus', name: 'Octopus', image: require('../../assets/boards/octopus.png') },
+  { id: 'sealion', name: 'Sea Lion', image: require('../../assets/boards/sealion.png') },
+  { id: 'sleep', name: 'Sleep', image: require('../../assets/boards/sleep.png') },
 ];
 
 const FREE_BOARDS_COUNT = 5;
@@ -162,6 +167,14 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="dark" />
+      {/* Base ocean gradient with wave effect */}
+      <LinearGradient
+        colors={['#E3F2FD', '#BBDEFB', '#90CAF9', '#BBDEFB', '#E3F2FD', '#BBDEFB', '#90CAF9']}
+        locations={[0, 0.15, 0.3, 0.5, 0.65, 0.8, 1]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
       <View style={styles.header}>
         <Text style={styles.title}>Choose a Puzzle</Text>
         <View style={styles.difficultyPills}>
@@ -246,7 +259,6 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
   },
   loadingContainer: {
     flex: 1,
@@ -261,9 +273,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 15,
     paddingBottom: 15,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    backgroundColor: 'transparent',
   },
   title: {
     fontSize: 20,
@@ -361,9 +371,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     padding: 20,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
+    backgroundColor: 'transparent',
   },
   unlockAllButton: {
     backgroundColor: '#4A90E2',
