@@ -14,6 +14,7 @@ import { Image } from 'expo-image';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { DIFFICULTY_LEVELS } from '../../App';
+import Settings from './Settings';
 
 // Simple storage fallback if AsyncStorage is not available
 let storage = null;
@@ -48,18 +49,41 @@ const ALL_BOARDS = [
   { id: 'octopus', name: 'Octopus', image: require('../../assets/boards/octopus.png') },
   { id: 'sealion', name: 'Sea Lion', image: require('../../assets/boards/sealion.png') },
   { id: 'sleep', name: 'Sleep', image: require('../../assets/boards/sleep.png') },
+  { id: 'seahorse', name: 'Seahorse', image: require('../../assets/boards/seahorse.png') },
 ];
 
 const FREE_BOARDS_COUNT = 5;
 const UNLOCK_KEY = '@unlocked_boards';
+const DIFFICULTY_LOCK_KEY = '@difficulty_locked';
 
 export default function BoardSelection({ difficulty, onSelectDifficulty, onSelectBoard }) {
   const [unlockedBoards, setUnlockedBoards] = useState(new Set());
   const [loading, setLoading] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
+  const [difficultyLocked, setDifficultyLocked] = useState(false);
 
   useEffect(() => {
     loadUnlockedBoards();
+    loadDifficultyLock();
   }, []);
+
+  useEffect(() => {
+    if (!showSettings) {
+      // Reload settings when settings modal closes
+      loadDifficultyLock();
+    }
+  }, [showSettings]);
+
+  const loadDifficultyLock = async () => {
+    try {
+      const locked = await storage.getItem(DIFFICULTY_LOCK_KEY);
+      if (locked !== null) {
+        setDifficultyLocked(JSON.parse(locked));
+      }
+    } catch (error) {
+      console.error('Error loading difficulty lock:', error);
+    }
+  };
 
   const loadUnlockedBoards = async () => {
     try {
@@ -177,6 +201,14 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
       />
       <View style={styles.header}>
         <Text style={styles.title}>Choose a Puzzle</Text>
+        <TouchableOpacity
+          style={styles.settingsButton}
+          onPress={() => setShowSettings(true)}
+        >
+          <Text style={styles.settingsButtonText}>⚙️</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={styles.difficultyContainer}>
         <View style={styles.difficultyPills}>
           {DIFFICULTY_LEVELS.map((level) => (
             <TouchableOpacity
@@ -185,8 +217,14 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
                 styles.difficultyPill,
                 difficulty.id === level.id && styles.difficultyPillActive,
                 { borderColor: level.color },
+                difficultyLocked && difficulty.id !== level.id && styles.difficultyPillDisabled,
               ]}
-              onPress={() => onSelectDifficulty(level)}
+              onPress={() => {
+                if (!difficultyLocked || difficulty.id === level.id) {
+                  onSelectDifficulty(level);
+                }
+              }}
+              disabled={difficultyLocked && difficulty.id !== level.id}
             >
               <Text
                 style={[
@@ -207,6 +245,9 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
             </TouchableOpacity>
           ))}
         </View>
+        {difficultyLocked && (
+          <Text style={styles.lockedHint}>Difficulty locked</Text>
+        )}
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.gridContainer}>
@@ -252,6 +293,11 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
           </TouchableOpacity>
         </View>
       )}
+
+      <Settings
+        visible={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -270,6 +316,9 @@ const styles = StyleSheet.create({
     color: '#757575',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 15,
     paddingBottom: 15,
@@ -279,11 +328,34 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
     color: '#424242',
-    marginBottom: 15,
+  },
+  settingsButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  settingsButtonText: {
+    fontSize: 20,
+  },
+  difficultyContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 15,
   },
   difficultyPills: {
     flexDirection: 'row',
     gap: 10,
+  },
+  difficultyPillDisabled: {
+    opacity: 0.5,
+  },
+  lockedHint: {
+    fontSize: 12,
+    color: '#757575',
+    marginTop: 8,
+    textAlign: 'center',
   },
   difficultyPill: {
     paddingVertical: 10,
