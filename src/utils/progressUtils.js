@@ -234,6 +234,19 @@ export async function getLastPlayed() {
 }
 
 /**
+ * Clear last played puzzle session
+ */
+export async function clearLastPlayed() {
+  try {
+    await AsyncStorage.removeItem(STORAGE_KEYS.LAST_PLAYED);
+    return true;
+  } catch (error) {
+    console.error('Error clearing last played:', error);
+    return false;
+  }
+}
+
+/**
  * Reset all progress
  */
 export async function resetAllProgress() {

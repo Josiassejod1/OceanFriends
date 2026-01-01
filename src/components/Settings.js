@@ -9,8 +9,9 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  Platform,
+  StatusBar as RNStatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { showReviewPrompt } from '../utils/reviewUtils';
@@ -179,7 +180,7 @@ export default function Settings({ visible, onClose }) {
       animationType="slide"
       onRequestClose={onClose}
     >
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <View style={styles.container}>
         <StatusBar style="dark" />
         <LinearGradient
           colors={['#E3F2FD', '#BBDEFB', '#90CAF9', '#BBDEFB']}
@@ -305,7 +306,7 @@ export default function Settings({ visible, onClose }) {
             </View>
           </View>
         </Modal>
-      </SafeAreaView>
+      </View>
     </Modal>
   );
 }
@@ -313,13 +314,15 @@ export default function Settings({ visible, onClose }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: Platform.OS === 'ios' ? 0 : RNStatusBar.currentHeight || 0,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingTop: Platform.OS === 'ios' ? 50 : 15,
+    paddingBottom: 15,
     backgroundColor: 'transparent',
   },
   headerTitle: {
@@ -343,6 +346,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 20,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
   },
   section: {
     marginBottom: 30,

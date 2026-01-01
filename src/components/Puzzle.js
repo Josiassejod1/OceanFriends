@@ -8,6 +8,8 @@ import {
   ActivityIndicator,
   Alert,
   Image as RNImage,
+  Modal,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -23,6 +25,8 @@ import {
   clearPuzzleState,
   markPuzzleCompleted,
   saveLastPlayed,
+  clearLastPlayed,
+  isPuzzleCompleted,
 } from '../utils/progressUtils';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -36,7 +40,10 @@ export default function Puzzle({ difficulty, boardImage, boardId, onBack }) {
   const [placedPieces, setPlacedPieces] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [showCelebration, setShowCelebration] = useState(false);
+  const [showFullScreenImage, setShowFullScreenImage] = useState(false);
+  const [showHint, setShowHint] = useState(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
+  const hintGlowAnim = useRef(new Animated.Value(0)).current;
   const soundsReady = useRef(false);
   const saveStateTimeoutRef = useRef(null);
 
@@ -62,6 +69,30 @@ export default function Puzzle({ difficulty, boardImage, boardId, onBack }) {
     };
   }, [boardImage, boardId]);
 
+  // Animate hint glow when hint is shown
+  useEffect(() => {
+    if (showHint) {
+      const glowAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(hintGlowAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(hintGlowAnim, {
+            toValue: 0,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      glowAnimation.start();
+      return () => glowAnimation.stop();
+    } else {
+      hintGlowAnim.setValue(0);
+    }
+  }, [showHint]);
+
   const loadImageAndState = async () => {
     try {
       setLoading(true);
@@ -80,8 +111,11 @@ export default function Puzzle({ difficulty, boardImage, boardId, onBack }) {
       
       setImageUri(imageUri);
       
-      // Try to load saved state
-      const savedState = await loadPuzzleState();
+      // Check if puzzle is already completed - if so, start fresh
+      const completed = await isPuzzleCompleted(boardId, difficulty.id);
+      
+      // Try to load saved state (only if not completed)
+      const savedState = !completed ? await loadPuzzleState() : null;
       let puzzlePieces;
       
       if (savedState && savedState.boardId === boardId && savedState.difficultyId === difficulty.id) {
@@ -106,7 +140,7 @@ export default function Puzzle({ difficulty, boardImage, boardId, onBack }) {
         setPlacedPieces(new Set(savedState.placedPieceIds));
         setSolvedPieces(savedState.placedPieceIds.length);
       } else {
-        // New puzzle - clear any old state
+        // New puzzle or completed puzzle - clear any old state
         await clearPuzzleState();
         puzzlePieces = splitImageIntoPieces(
           imageUri,
@@ -166,8 +200,9 @@ export default function Puzzle({ difficulty, boardImage, boardId, onBack }) {
             // Mark puzzle as completed
             markPuzzleCompleted(boardId, difficulty.id);
             
-            // Clear saved state (puzzle is done)
-            clearPuzzleState();
+            // Clear saved state and session (puzzle is done) - fire and forget
+            clearPuzzleState().catch(err => console.error('Error clearing puzzle state:', err));
+            clearLastPlayed().catch(err => console.error('Error clearing last played:', err));
             
             // Puzzle completed!
             Animated.spring(fadeAnim, {
@@ -272,6 +307,46 @@ export default function Puzzle({ difficulty, boardImage, boardId, onBack }) {
                 style={styles.boardBackground}
                 contentFit="cover"
               />
+              {/* Hint glow indicators for unplaced pieces */}
+              {showHint && pieces.map((piece) => {
+                if (!placedPieces.has(piece.id)) {
+                  return (
+                    <Animated.View
+                      key={`hint-${piece.id}`}
+                      style={[
+                        styles.hintGlow,
+                        {
+                          left: piece.correctX,
+                          top: piece.correctY,
+                          width: piece.pieceSize,
+                          height: piece.pieceSize,
+                        },
+                      ]}
+                    >
+                      <Animated.View
+                        style={[
+                          styles.hintGlowInner,
+                          {
+                            opacity: hintGlowAnim.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: [0.4, 0.9],
+                            }),
+                            transform: [
+                              {
+                                scale: hintGlowAnim.interpolate({
+                                  inputRange: [0, 1],
+                                  outputRange: [0.95, 1.05],
+                                }),
+                              },
+                            ],
+                          },
+                        ]}
+                      />
+                    </Animated.View>
+                  );
+                }
+                return null;
+              })}
               {pieces.map((piece) => (
                 <PuzzlePiece
                   key={piece.id}
@@ -286,16 +361,66 @@ export default function Puzzle({ difficulty, boardImage, boardId, onBack }) {
         </Animated.View>
 
         <View style={styles.referenceContainer}>
-          <Text style={styles.referenceLabel}>Reference Image:</Text>
-          <View style={styles.referenceImageContainer}>
-            <Image
-              source={{ uri: imageUri }}
-              style={styles.referenceImage}
-              contentFit="cover"
-            />
+          <View style={styles.referenceHeader}>
+            <Text style={styles.referenceLabel}>Reference Image:</Text>
+            <TouchableOpacity
+              style={styles.hintButton}
+              onPress={() => {
+                setShowHint(!showHint);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              }}
+            >
+              <Text style={styles.hintButtonText}>💡 Hint</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.referenceContent}>
+            <TouchableOpacity
+              style={styles.referenceImageContainer}
+              onPress={() => {
+                setShowFullScreenImage(true);
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              }}
+              activeOpacity={0.8}
+            >
+              <Image
+                source={{ uri: imageUri }}
+                style={styles.referenceImage}
+                contentFit="cover"
+              />
+            </TouchableOpacity>
+            {showHint && (
+              <View style={styles.hintContainer}>
+                <Text style={styles.hintText}>
+                  💡 Tap and drag pieces to move them. They'll snap into place when close to the correct position!
+                </Text>
+              </View>
+            )}
           </View>
         </View>
       </View>
+
+      {/* Full Screen Image Modal */}
+      <Modal
+        visible={showFullScreenImage}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowFullScreenImage(false)}
+      >
+        <StatusBar hidden={true} />
+        <View style={styles.fullScreenModal}>
+          <TouchableOpacity
+            style={styles.fullScreenCloseButton}
+            onPress={() => setShowFullScreenImage(false)}
+          >
+            <Text style={styles.fullScreenCloseText}>✕ Close</Text>
+          </TouchableOpacity>
+          <Image
+            source={{ uri: imageUri }}
+            style={styles.fullScreenImage}
+            contentFit="contain"
+          />
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -375,13 +500,35 @@ const styles = StyleSheet.create({
   },
   referenceContainer: {
     padding: 15,
+    paddingBottom: 20,
+  },
+  referenceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 10,
   },
   referenceLabel: {
     color: '#8B8B8B',
     fontSize: 16,
-    marginBottom: 10,
     fontWeight: '500',
+  },
+  hintButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: '#D5D5D5',
+  },
+  hintButtonText: {
+    color: '#6B6B6B',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  referenceContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
   },
   referenceImageContainer: {
     width: 120,
@@ -390,10 +537,72 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 2,
     borderColor: '#D5D5D5',
+    flexShrink: 0,
   },
   referenceImage: {
     width: '100%',
     height: '100%',
+  },
+  hintContainer: {
+    flex: 1,
+    marginLeft: 15,
+    padding: 12,
+    backgroundColor: '#FFF9E6',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FFE082',
+    alignSelf: 'stretch',
+  },
+  hintText: {
+    color: '#8B6914',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  fullScreenModal: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullScreenCloseButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    padding: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  fullScreenCloseText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  fullScreenImage: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT,
+  },
+  hintGlow: {
+    position: 'absolute',
+    borderRadius: 8,
+    overflow: 'hidden',
+    pointerEvents: 'none',
+    zIndex: 5,
+  },
+  hintGlowInner: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#FFD700',
+    borderRadius: 8,
+    borderWidth: 3,
+    borderColor: '#FFA500',
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 15,
+    elevation: 10,
   },
   celebrationContainer: {
     flex: 1,

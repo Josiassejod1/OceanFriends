@@ -73,6 +73,11 @@ const ALL_BOARDS = [
   { id: 'sleep', name: 'Sleep', image: require('../../assets/boards/sleep.png') },
   { id: 'seahorse', name: 'Seahorse', image: require('../../assets/boards/seahorse.png') },
   { id: 'lobster', name: 'Lobster', image: require('../../assets/boards/lobster.png') },
+  { id: 'jellyfish', name: 'Jellyfish', image: require('../../assets/boards/jellyfish.png') },
+  { id: 'penguin', name: 'Penguin', image: require('../../assets/boards/penguin.png') },
+  { id: 'star', name: 'Starfish', image: require('../../assets/boards/star.png') },
+  { id: 'sword_fish', name: 'Swordfish', image: require('../../assets/boards/sword_fish.png') },
+  { id: 'whale', name: 'Whale', image: require('../../assets/boards/whale.png') },
 ];
 
 const FREE_BOARDS_COUNT = 5;

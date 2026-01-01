@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, Animated as RNAnimated, PanResponder } from 'react-native';
 import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
@@ -6,8 +6,10 @@ import { isPieceInCorrectPosition } from '../utils/puzzleUtils';
 
 export default function PuzzlePiece({ piece, puzzleAreaSize, gridSize, onPlaced }) {
   const [isPlaced, setIsPlaced] = useState(piece.isPlaced);
+  const [imageLoaded, setImageLoaded] = useState(false);
   const pan = useRef(new RNAnimated.ValueXY({ x: piece.currentX, y: piece.currentY })).current;
   const scale = useRef(new RNAnimated.Value(1)).current;
+  const opacity = useRef(new RNAnimated.Value(0)).current;
   
   // Calculate boundaries with limited overflow (30% of piece size)
   const OVERFLOW_AMOUNT = piece.pieceSize * 0.3;
@@ -178,6 +180,21 @@ export default function PuzzlePiece({ piece, puzzleAreaSize, gridSize, onPlaced 
     top: -piece.row * piece.pieceSize,
   };
 
+  // Handle image load with fade-in animation
+  useEffect(() => {
+    if (imageLoaded) {
+      RNAnimated.timing(opacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [imageLoaded]);
+
+  const handleImageLoad = () => {
+    setImageLoaded(true);
+  };
+
   return (
     <RNAnimated.View
       style={[
@@ -197,11 +214,24 @@ export default function PuzzlePiece({ piece, puzzleAreaSize, gridSize, onPlaced 
       {...panResponder.panHandlers}
     >
       <View style={[styles.pieceImageContainer, { overflow: 'hidden' }]}>
-        <Image
-          source={{ uri: piece.imageUri }}
-          style={pieceImageStyle}
-          contentFit="cover"
-        />
+        {/* Placeholder background to prevent flash */}
+        {!imageLoaded && (
+          <View style={[pieceImageStyle, styles.imagePlaceholder]} />
+        )}
+        <RNAnimated.View
+          style={[
+            StyleSheet.absoluteFill,
+            { opacity: opacity },
+          ]}
+        >
+          <Image
+            source={{ uri: piece.imageUri }}
+            style={pieceImageStyle}
+            contentFit="cover"
+            onLoad={handleImageLoad}
+            transition={200}
+          />
+        </RNAnimated.View>
       </View>
       {isPlaced && (
         <View style={styles.placedIndicator}>
@@ -228,6 +258,10 @@ const styles = StyleSheet.create({
   pieceImageContainer: {
     width: '100%',
     height: '100%',
+  },
+  imagePlaceholder: {
+    backgroundColor: '#E5E5E5',
+    position: 'absolute',
   },
   placedIndicator: {
     position: 'absolute',
