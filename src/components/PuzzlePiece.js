@@ -10,6 +10,8 @@ export default function PuzzlePiece({ piece, puzzleAreaSize, gridSize, onPlaced 
   const pan = useRef(new RNAnimated.ValueXY({ x: piece.currentX, y: piece.currentY })).current;
   const scale = useRef(new RNAnimated.Value(1)).current;
   const opacity = useRef(new RNAnimated.Value(0)).current;
+  const lastPositionRef = useRef({ x: piece.currentX, y: piece.currentY });
+  const isDraggingRef = useRef(false);
   
   // Calculate boundaries with limited overflow (30% of piece size)
   const OVERFLOW_AMOUNT = piece.pieceSize * 0.3;
@@ -93,6 +95,7 @@ export default function PuzzlePiece({ piece, puzzleAreaSize, gridSize, onPlaced 
       onMoveShouldSetPanResponder: () => !isPlaced,
       onPanResponderGrant: () => {
         if (!isPlaced) {
+          isDraggingRef.current = true;
           // Light haptic on piece pick up
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {
             // Silently fail if haptics not available
@@ -151,6 +154,10 @@ export default function PuzzlePiece({ piece, puzzleAreaSize, gridSize, onPlaced 
           // Update piece position
           piece.currentX = finalX;
           piece.currentY = finalY;
+          lastPositionRef.current = { x: finalX, y: finalY };
+          
+          // Mark as no longer dragging
+          isDraggingRef.current = false;
           
           RNAnimated.spring(scale, {
             toValue: 1,
@@ -179,6 +186,29 @@ export default function PuzzlePiece({ piece, puzzleAreaSize, gridSize, onPlaced 
     left: -piece.col * piece.pieceSize,
     top: -piece.row * piece.pieceSize,
   };
+
+  // Sync animated position when piece position changes (e.g., from shuffle)
+  useEffect(() => {
+    if (!isPlaced && !isDraggingRef.current) {
+      const dx = Math.abs(piece.currentX - lastPositionRef.current.x);
+      const dy = Math.abs(piece.currentY - lastPositionRef.current.y);
+      
+      // Only update if position changed significantly (more than 10 pixels)
+      // This prevents interference with normal dragging
+      if (dx > 10 || dy > 10) {
+        lastPositionRef.current = { x: piece.currentX, y: piece.currentY };
+        // Flatten any existing offset
+        pan.flattenOffset();
+        // Update to new position with animation
+        RNAnimated.spring(pan, {
+          toValue: { x: piece.currentX, y: piece.currentY },
+          useNativeDriver: false,
+          damping: 15,
+          stiffness: 150,
+        }).start();
+      }
+    }
+  }, [piece.currentX, piece.currentY, isPlaced]);
 
   // Handle image load with fade-in animation
   useEffect(() => {

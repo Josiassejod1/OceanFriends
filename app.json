@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/boards/shark.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/boards/shark.png",
       "resizeMode": "contain",
@@ -37,6 +37,13 @@
     },
     "privacy": "public",
     "description": "Ocean Friends - Sea Life Jigsaw Puzzles! Solve beautiful ocean animal puzzles featuring dolphins, turtles, fish, and more. Perfect jigsaw puzzle game for kids and families. Play with 4, 9, or 16 pieces. Free ocean puzzles with marine life themes!",
-    "plugins": ["expo-iap"]
+    "plugins": [
+      "expo-iap"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "161211fa-4109-47e2-8beb-5625dbe9a000"
+      }
+    }
   }
 }

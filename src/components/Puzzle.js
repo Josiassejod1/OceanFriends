@@ -241,6 +241,42 @@ export default function Puzzle({ difficulty, boardImage, boardId, onBack }) {
     loadImageAndState();
   };
 
+  const handleShuffle = useCallback(() => {
+    // Haptic feedback
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+    
+    // Reset only unplaced pieces to random positions
+    setPieces((prevPieces) => {
+      const updatedPieces = prevPieces.map((piece) => {
+        // Only shuffle pieces that aren't placed
+        if (!placedPieces.has(piece.id)) {
+          // Random starting position (same logic as initial placement)
+          const startX = (Math.random() - 0.5) * PUZZLE_AREA_SIZE * 1.2 + PUZZLE_AREA_SIZE / 2;
+          const startY = (Math.random() - 0.5) * PUZZLE_AREA_SIZE * 1.2 + PUZZLE_AREA_SIZE / 2;
+          
+          return {
+            ...piece,
+            currentX: startX,
+            currentY: startY,
+            isPlaced: false,
+          };
+        }
+        // Keep placed pieces as they are
+        return piece;
+      });
+      
+      // Save state after shuffling
+      if (saveStateTimeoutRef.current) {
+        clearTimeout(saveStateTimeoutRef.current);
+      }
+      saveStateTimeoutRef.current = setTimeout(() => {
+        savePuzzleState(boardId, difficulty.id, updatedPieces, placedPieces);
+      }, 500);
+      
+      return updatedPieces;
+    });
+  }, [placedPieces, boardId, difficulty.id]);
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -295,7 +331,12 @@ export default function Puzzle({ difficulty, boardImage, boardId, onBack }) {
           <Text style={styles.progressText}>
             {solvedPieces} / {difficulty.pieces}
           </Text>
-          <View style={styles.placeholder} />
+          <TouchableOpacity
+            onPress={handleShuffle}
+            style={styles.shuffleButton}
+          >
+            <Text style={styles.shuffleButtonText}>🔀 Shuffle</Text>
+          </TouchableOpacity>
         </View>
 
         <Animated.View style={[styles.puzzleContainer, { opacity: fadeAnim }]}>
@@ -465,6 +506,17 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     width: 50,
+  },
+  shuffleButton: {
+    padding: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#F0F0F0',
+  },
+  shuffleButtonText: {
+    color: '#6B6B6B',
+    fontSize: 14,
+    fontWeight: '600',
   },
   puzzleContainer: {
     flex: 1,
