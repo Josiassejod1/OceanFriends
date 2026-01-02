@@ -1,9 +1,26 @@
 import { Audio } from 'expo-av';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 let correctSound = null;
 let successSound = null;
 let clickSound = null;
 let soundsLoaded = false;
+
+const SOUND_SETTING_KEY = '@sound_enabled';
+
+/**
+ * Check if sound is enabled in settings
+ */
+async function isSoundEnabled() {
+  try {
+    const setting = await AsyncStorage.getItem(SOUND_SETTING_KEY);
+    // Default to true if setting doesn't exist
+    return setting === null ? true : JSON.parse(setting);
+  } catch (error) {
+    // Default to true on error
+    return true;
+  }
+}
 
 export async function loadSounds() {
   try {
@@ -42,6 +59,12 @@ export async function loadSounds() {
 }
 
 export async function playCorrectSound() {
+  // Check if sound is enabled
+  const enabled = await isSoundEnabled();
+  if (!enabled) {
+    return;
+  }
+  
   if (!soundsLoaded || !correctSound) {
     return;
   }
@@ -64,6 +87,12 @@ export async function playCorrectSound() {
 }
 
 export async function playSuccessSound() {
+  // Check if sound is enabled
+  const enabled = await isSoundEnabled();
+  if (!enabled) {
+    return;
+  }
+  
   if (!soundsLoaded || !successSound) {
     return;
   }
@@ -86,6 +115,12 @@ export async function playSuccessSound() {
 }
 
 export async function playClickSound() {
+  // Check if sound is enabled
+  const enabled = await isSoundEnabled();
+  if (!enabled) {
+    return;
+  }
+  
   if (!soundsLoaded || !clickSound) {
     return;
   }
