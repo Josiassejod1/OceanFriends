@@ -25,7 +25,7 @@ Then, add the plugin to your `app.json`:
 1. Go to App Store Connect → Your App → Features → In-App Purchases
 2. Create a new **Non-Consumable** product
 3. Set the Product ID to: `unlock_all_boards`
-4. Set the price to $2.99 (or your desired price)
+4. Set the price to $4.99 (or your desired price)
 5. Add a display name and description
 6. Submit for review along with your app
 
@@ -33,7 +33,7 @@ Then, add the plugin to your `app.json`:
 1. Go to Google Play Console → Your App → Monetize → Products → In-app products
 2. Create a new **Managed product** (non-consumable)
 3. Set the Product ID to: `unlock_all_boards`
-4. Set the price to $2.99 (or your desired price)
+4. Set the price to $4.99 (or your desired price)
 5. Add a title and description
 6. Activate the product
 

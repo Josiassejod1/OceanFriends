@@ -90,7 +90,7 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
   const [showSettings, setShowSettings] = useState(false);
   const [difficultyLocked, setDifficultyLocked] = useState(false);
   const [iapReady, setIapReady] = useState(false);
-  const [purchasePrice, setPurchasePrice] = useState('$2.99'); // Default fallback
+  const [purchasePrice, setPurchasePrice] = useState('$4.99'); // Default fallback
   const [boardProgress, setBoardProgress] = useState({}); // { boardId: { completed: 0, total: 3, percentage: 0 } }
   const [statistics, setStatistics] = useState(null);
 
