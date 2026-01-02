@@ -44,6 +44,17 @@ try {
   };
 }
 
+// Optional IAP imports - gracefully handle if package not installed
+let iapUtils = null;
+try {
+  iapUtils = require('../utils/iapUtils');
+} catch (e) {
+  // IAP not available - app will work without it
+  iapUtils = {
+    restorePurchases: async () => ({ success: true, restored: 0 }),
+  };
+}
+
 const SETTINGS_KEYS = {
   SOUND_ENABLED: '@sound_enabled',
   DIFFICULTY_LOCKED: '@difficulty_locked',
@@ -58,6 +69,7 @@ export default function Settings({ visible, onClose }) {
   const [challengeAnswer, setChallengeAnswer] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
+  const [isRestoring, setIsRestoring] = useState(false);
 
   useEffect(() => {
     if (visible) {
@@ -172,6 +184,47 @@ export default function Settings({ visible, onClose }) {
     );
   };
 
+  const handleRestorePurchases = async () => {
+    setIsRestoring(true);
+    try {
+      // Initialize IAP if needed
+      if (iapUtils && iapUtils.initializeIAP) {
+        await iapUtils.initializeIAP();
+      }
+      
+      const result = await iapUtils.restorePurchases();
+      
+      if (result.success) {
+        if (result.restored > 0) {
+          Alert.alert(
+            'Purchases Restored',
+            `Successfully restored ${result.restored} purchase(s). All boards are now unlocked!`
+          );
+          // Trigger a refresh by closing and reopening settings
+          // The BoardSelection component will reload unlocked boards on mount
+        } else {
+          Alert.alert(
+            'No Purchases Found',
+            'No previous purchases were found to restore. If you believe this is an error, please contact support.'
+          );
+        }
+      } else {
+        Alert.alert(
+          'Restore Failed',
+          result.error || 'Failed to restore purchases. Please try again later.'
+        );
+      }
+    } catch (error) {
+      console.error('Error restoring purchases:', error);
+      Alert.alert(
+        'Error',
+        'An error occurred while restoring purchases. Please try again later.'
+      );
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
   if (!visible) return null;
 
   return (
@@ -239,6 +292,17 @@ export default function Settings({ visible, onClose }) {
               onPress={handleResetProgress}
             >
               <Text style={styles.resetButtonText}>Reset Progress</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.resetButton, styles.restoreButton]}
+              onPress={handleRestorePurchases}
+              disabled={isRestoring}
+            >
+              {isRestoring ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={[styles.resetButtonText, styles.restoreButtonText]}>Restore Purchases</Text>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -385,11 +449,21 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 12,
     alignItems: 'center',
+    marginBottom: 10,
+  },
+  restoreButton: {
+    backgroundColor: 'rgba(76, 175, 80, 0.8)',
   },
   resetButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#F44336',
+  },
+  restoreButtonText: {
+    color: '#FFFFFF',
+  },
+  restoreButtonText: {
+    color: '#FFFFFF',
   },
   aboutText: {
     fontSize: 14,
