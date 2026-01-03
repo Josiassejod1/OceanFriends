@@ -257,9 +257,15 @@ export default function Puzzle({ difficulty, boardImage, boardId, onBack, onNewP
       const updatedPieces = prevPieces.map((piece) => {
         // Only shuffle pieces that aren't placed
         if (!placedPieces.has(piece.id)) {
-          // Random starting position (same logic as initial placement)
-          const startX = (Math.random() - 0.5) * PUZZLE_AREA_SIZE * 1.2 + PUZZLE_AREA_SIZE / 2;
-          const startY = (Math.random() - 0.5) * PUZZLE_AREA_SIZE * 1.2 + PUZZLE_AREA_SIZE / 2;
+          // Random starting position (constrained to visible area)
+          const padding = 30; // Match puzzleWrapper padding
+          const minX = -padding;
+          const maxX = PUZZLE_AREA_SIZE - piece.pieceSize + padding;
+          const minY = -padding;
+          const maxY = PUZZLE_AREA_SIZE - piece.pieceSize + padding;
+          
+          const startX = Math.random() * (maxX - minX) + minX;
+          const startY = Math.random() * (maxY - minY) + minY;
           
           return {
             ...piece,

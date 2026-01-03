@@ -10,11 +10,16 @@ export function splitImageIntoPieces(imageUri, pieceCount, puzzleSize) {
       const correctY = row * pieceSize;
 
       // Random starting position (scattered around, but ensure they're visible)
-      // Position pieces outside the puzzle area but nearby
-      const offsetX = puzzleSize * 0.3;
-      const offsetY = puzzleSize * 0.3;
-      const startX = (Math.random() - 0.5) * puzzleSize * 1.2 + puzzleSize / 2;
-      const startY = (Math.random() - 0.5) * puzzleSize * 1.2 + puzzleSize / 2;
+      // Constrain to visible area: account for wrapper padding (30px) and piece size
+      const padding = 30; // Match puzzleWrapper padding
+      const minX = -padding;
+      const maxX = puzzleSize - pieceSize + padding;
+      const minY = -padding;
+      const maxY = puzzleSize - pieceSize + padding;
+      
+      // Generate random position within constrained bounds
+      const startX = Math.random() * (maxX - minX) + minX;
+      const startY = Math.random() * (maxY - minY) + minY;
 
       pieces.push({
         id: pieceId,

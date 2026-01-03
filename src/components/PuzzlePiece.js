@@ -15,7 +15,7 @@ export default function PuzzlePiece({ piece, puzzleAreaSize, gridSize, onPlaced 
   
   // Calculate boundaries - prevent overflow, keep pieces visible
   // Allow minimal overflow (10% of piece size) to prevent pieces from being cut off at edges
-  const OVERFLOW_AMOUNT = piece.pieceSize * 0.1;
+  const OVERFLOW_AMOUNT = piece.pieceSize * 0.3;
   const MIN_X = -OVERFLOW_AMOUNT;
   const MAX_X = puzzleAreaSize - piece.pieceSize + OVERFLOW_AMOUNT;
   const MIN_Y = -OVERFLOW_AMOUNT;
