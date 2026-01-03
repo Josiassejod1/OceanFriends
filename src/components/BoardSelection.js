@@ -78,6 +78,12 @@ export const ALL_BOARDS = [
   { id: 'star', name: 'Starfish', image: require('../../assets/boards/star.png') },
   { id: 'sword_fish', name: 'Swordfish', image: require('../../assets/boards/sword_fish.png') },
   { id: 'whale', name: 'Whale', image: require('../../assets/boards/whale.png') },
+  { id: 'pufferfish', name: 'Pufferfish', image: require('../../assets/boards/pufferfish.png') },
+  { id: 'shrimp', name: 'Shrimp', image: require('../../assets/boards/shrimp.png') },
+  { id: 'angler', name: 'Anglerfish', image: require('../../assets/boards/angler.png') },
+  { id: 'lobster_violin', name: 'Lobster Violin', image: require('../../assets/boards/lobster-violin.png') },
+  { id: 'shark_whale_pals', name: 'Shark & Whale Pals', image: require('../../assets/boards/shark_and_whale_pals.png') },
+  { id: 'sea_dragon', name: 'Sea Dragon', image: require('../../assets/boards/sea-dragon.png') },
 ];
 
 const FREE_BOARDS_COUNT = 5;
