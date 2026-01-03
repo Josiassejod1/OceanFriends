@@ -33,7 +33,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PUZZLE_AREA_SIZE = Math.min(SCREEN_WIDTH - 40, SCREEN_HEIGHT * 0.6);
 const PIECE_SIZE = PUZZLE_AREA_SIZE / 4; // Base size for calculations
 
-export default function Puzzle({ difficulty, boardImage, boardId, onBack }) {
+export default function Puzzle({ difficulty, boardImage, boardId, onBack, onNewPuzzle }) {
   const [imageUri, setImageUri] = useState(null);
   const [pieces, setPieces] = useState([]);
   const [solvedPieces, setSolvedPieces] = useState(0);
@@ -238,7 +238,14 @@ export default function Puzzle({ difficulty, boardImage, boardId, onBack }) {
     setShowCelebration(false);
     fadeAnim.setValue(1);
     await clearPuzzleState(); // Clear saved state for new puzzle
-    loadImageAndState();
+    
+    // If onNewPuzzle callback is provided, use it to select a random puzzle
+    // Otherwise, just reload the current puzzle
+    if (onNewPuzzle) {
+      onNewPuzzle();
+    } else {
+      loadImageAndState();
+    }
   };
 
   const handleShuffle = useCallback(() => {

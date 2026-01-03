@@ -57,8 +57,8 @@ const GRID_GAP = 12;
 // Calculate item size: (screen width - 2*padding - gap) / 2 items (2 columns)
 const ITEM_SIZE = (SCREEN_WIDTH - GRID_PADDING * 2 - GRID_GAP) / 2;
 
-// All available boards
-const ALL_BOARDS = [
+// All available boards - exported for use in App.js
+export const ALL_BOARDS = [
   { id: 'clown', name: 'Clown Fish', image: require('../../assets/boards/clown.png') },
   { id: 'crab', name: 'Crab', image: require('../../assets/boards/crab.png') },
   { id: 'dolphin', name: 'Dolphin', image: require('../../assets/boards/dolphin.png') },
