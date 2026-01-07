@@ -103,13 +103,15 @@ If IAP is unavailable, the app continues to function normally (boards remain loc
 
 ## Production Checklist
 
-- [ ] Install `expo-in-app-purchases` package
+- [x] Install `expo-iap` package (v3.4.0+)
 - [ ] Configure product in App Store Connect (iOS)
 - [ ] Configure product in Google Play Console (Android)
 - [ ] Test purchases in sandbox/test environment
 - [ ] Verify purchase restoration works
 - [ ] Test on physical devices (not just simulators)
 - [ ] Submit app with IAP products for review
+- [ ] Verify purchase event listeners are working correctly
+- [ ] Test purchase flow with proper error handling
 
 ## Notes
 

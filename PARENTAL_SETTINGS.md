@@ -14,10 +14,12 @@
 
 **Implementation:**
 ```javascript
-// Use native IAP with authentication
-import * as InAppPurchases from 'expo-in-app-purchases';
+// Use expo-iap with authentication
+import { requestPurchase, ErrorCode } from 'expo-iap';
 
 // Require authentication before purchase
+// Note: Native purchase dialogs handle authentication automatically
+// Additional parental gate can be added before calling requestPurchase
 const requireParentalAuth = async () => {
   // Use biometric or password prompt
   // Only proceed if authenticated
