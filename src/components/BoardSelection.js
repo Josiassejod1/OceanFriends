@@ -8,6 +8,9 @@ import {
   Dimensions,
   Image as RNImage,
   Alert,
+  Modal,
+  TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -99,6 +102,11 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
   const [purchasePrice, setPurchasePrice] = useState('$4.99'); // Default fallback
   const [boardProgress, setBoardProgress] = useState({}); // { boardId: { completed: 0, total: 3, percentage: 0 } }
   const [statistics, setStatistics] = useState(null);
+  const [showParentalChallenge, setShowParentalChallenge] = useState(false);
+  const [challengeNums, setChallengeNums] = useState([0, 0]);
+  const [challengeAnswer, setChallengeAnswer] = useState('');
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [pendingPurchaseAction, setPendingPurchaseAction] = useState(null);
 
   useEffect(() => {
     loadUnlockedBoards();
@@ -225,6 +233,40 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
     }
   };
 
+  const showChallenge = () => {
+    const num1 = Math.floor(Math.random() * 10) + 1;
+    const num2 = Math.floor(Math.random() * 10) + 1;
+    setChallengeNums([num1, num2]);
+    setChallengeAnswer('');
+    setShowParentalChallenge(true);
+  };
+
+  const handleChallengeSubmit = () => {
+    const correctAnswer = challengeNums[0] + challengeNums[1];
+    const userAnswer = parseInt(challengeAnswer.trim(), 10);
+
+    if (userAnswer === correctAnswer) {
+      setIsVerifying(true);
+      setTimeout(() => {
+        setIsVerifying(false);
+        setShowParentalChallenge(false);
+        if (pendingPurchaseAction) {
+          pendingPurchaseAction();
+          setPendingPurchaseAction(null);
+        }
+      }, 500);
+    } else {
+      Alert.alert('Incorrect', 'Please try again');
+      setChallengeAnswer('');
+    }
+  };
+
+  const handleChallengeCancel = () => {
+    setShowParentalChallenge(false);
+    setChallengeAnswer('');
+    setPendingPurchaseAction(null);
+  };
+
   const handlePurchase = (board) => {
     Alert.alert(
       'Unlock Board',
@@ -233,24 +275,29 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Purchase',
-          onPress: async () => {
-            // For individual boards, we'll unlock all (simpler IAP model)
-            // In a production app, you might want individual board purchases
-            if (iapReady) {
-              const result = await iapUtils.purchaseUnlockAll();
-              if (result.success) {
-                await loadUnlockedBoards();
-                Alert.alert('Success', `${board.name} unlocked!`);
+          onPress: () => {
+            // Set up the purchase action to execute after parental gate
+            setPendingPurchaseAction(() => async () => {
+              // For individual boards, we'll unlock all (simpler IAP model)
+              // In a production app, you might want individual board purchases
+              if (iapReady) {
+                const result = await iapUtils.purchaseUnlockAll();
+                if (result.success) {
+                  await loadUnlockedBoards();
+                  Alert.alert('Success', `${board.name} unlocked!`);
+                } else {
+                  Alert.alert('Purchase Failed', result.error || 'Please try again.');
+                }
               } else {
-                Alert.alert('Purchase Failed', result.error || 'Please try again.');
+                // Fallback if IAP not available (for testing)
+                Alert.alert(
+                  'IAP Not Available',
+                  'In-app purchases are not available. Please use "Unlock All" option or try again later.'
+                );
               }
-            } else {
-              // Fallback if IAP not available (for testing)
-              Alert.alert(
-                'IAP Not Available',
-                'In-app purchases are not available. Please use "Unlock All" option or try again later.'
-              );
-            }
+            });
+            // Show parental gate challenge
+            showChallenge();
           },
         },
       ]
@@ -273,29 +320,34 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Purchase',
-          onPress: async () => {
-            if (!iapReady) {
-              Alert.alert(
-                'IAP Not Available',
-                'In-app purchases are not available on this device. Please try again later.'
-              );
-              return;
-            }
-
-            try {
-              const result = await iapUtils.purchaseUnlockAll();
-              
-              if (result.success) {
-                // Reload unlocked boards
-                await loadUnlockedBoards();
-                Alert.alert('Success', 'All boards unlocked!');
-              } else {
-                Alert.alert('Purchase Failed', result.error || 'Please try again.');
+          onPress: () => {
+            // Set up the purchase action to execute after parental gate
+            setPendingPurchaseAction(() => async () => {
+              if (!iapReady) {
+                Alert.alert(
+                  'IAP Not Available',
+                  'In-app purchases are not available on this device. Please try again later.'
+                );
+                return;
               }
-            } catch (error) {
-              console.error('Purchase error:', error);
-              Alert.alert('Error', 'Failed to complete purchase. Please try again.');
-            }
+
+              try {
+                const result = await iapUtils.purchaseUnlockAll();
+                
+                if (result.success) {
+                  // Reload unlocked boards
+                  await loadUnlockedBoards();
+                  Alert.alert('Success', 'All boards unlocked!');
+                } else {
+                  Alert.alert('Purchase Failed', result.error || 'Please try again.');
+                }
+              } catch (error) {
+                console.error('Purchase error:', error);
+                Alert.alert('Error', 'Failed to complete purchase. Please try again.');
+              }
+            });
+            // Show parental gate challenge
+            showChallenge();
           },
         },
       ]
@@ -446,6 +498,55 @@ export default function BoardSelection({ difficulty, onSelectDifficulty, onSelec
         visible={showSettings}
         onClose={() => setShowSettings(false)}
       />
+
+      {/* Parental Challenge Modal */}
+      <Modal
+        visible={showParentalChallenge}
+        transparent
+        animationType="fade"
+        onRequestClose={handleChallengeCancel}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.challengeModal}>
+            {isVerifying ? (
+              <ActivityIndicator size="large" color="#4A90E2" />
+            ) : (
+              <>
+                <Text style={styles.challengeTitle}>
+                  Parental Verification
+                </Text>
+                <Text style={styles.challengeQuestion}>
+                  What is {challengeNums[0]} + {challengeNums[1]}?
+                </Text>
+                <TextInput
+                  style={styles.challengeInput}
+                  keyboardType="numeric"
+                  value={challengeAnswer}
+                  onChangeText={setChallengeAnswer}
+                  placeholder="Enter answer"
+                  placeholderTextColor="#999"
+                  editable={!isVerifying}
+                  autoFocus
+                />
+                <TouchableOpacity
+                  style={[styles.challengeButton, styles.submitButton]}
+                  onPress={handleChallengeSubmit}
+                  disabled={isVerifying || !challengeAnswer.trim()}
+                >
+                  <Text style={styles.challengeButtonText}>Submit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.challengeButton, styles.cancelButton]}
+                  onPress={handleChallengeCancel}
+                  disabled={isVerifying}
+                >
+                  <Text style={[styles.challengeButtonText, styles.cancelButtonText]}>Cancel</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -643,6 +744,71 @@ const styles = StyleSheet.create({
     color: '#757575',
     marginTop: 4,
     textAlign: 'center',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  challengeModal: {
+    width: '80%',
+    maxWidth: 350,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 30,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  challengeTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#424242',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  challengeQuestion: {
+    fontSize: 18,
+    color: '#424242',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  challengeInput: {
+    borderWidth: 2,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    padding: 15,
+    width: '100%',
+    marginBottom: 20,
+    textAlign: 'center',
+    fontSize: 18,
+    backgroundColor: '#F5F5F5',
+  },
+  challengeButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 30,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 10,
+    width: '100%',
+  },
+  submitButton: {
+    backgroundColor: '#4A90E2',
+  },
+  cancelButton: {
+    backgroundColor: '#E0E0E0',
+  },
+  challengeButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  cancelButtonText: {
+    color: '#424242',
   },
 });
 
