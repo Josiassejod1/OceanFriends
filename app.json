@@ -2,7 +2,7 @@
   "expo": {
     "name": "Ocean Friends",
     "slug": "ocean-friends-jigsaw",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/boards/shark.png",
     "userInterfaceStyle": "light",
@@ -15,7 +15,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.oceanfriends.jigsaw",
-      "buildNumber": "1.0.0",
+      "buildNumber": "1.0.1",
       "subtitle": "Sea Life Jigsaw Puzzles",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
